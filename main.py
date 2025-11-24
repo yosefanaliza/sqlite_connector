@@ -1,10 +1,4 @@
-"""
-Main application module for SQLite Connector demo.
-Demonstrates SQLite database operations with ClassicModels database.
-"""
 
-from dotenv import load_dotenv
-import os
 from db import get_connection
 from dal import (
     # Customer operations
@@ -17,13 +11,6 @@ from dal import (
     get_order_details,
     get_orders_by_customer,
 )
-
-load_dotenv()
-
-
-def print_env():
-    print(os.getenv("DB_PATH"))
-
 
 def connect_and_query():
     """Example function showing direct SQLite usage."""

@@ -4,7 +4,6 @@ import sqlite3
 
 DB_PATH = 'classicmodels.db'
 
-
 def get_connection():
     """Create and return a SQLite database connection."""
     try:
