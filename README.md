@@ -1,133 +1,134 @@
-# MySQL Connector - ClassicModels Database
+# ClassicModels SQLite Connector
 
-A Python application demonstrating MySQL database connectivity using `mysql-connector-python` with the ClassicModels sample database. Features a clean Data Access Layer (DAL) architecture with class-based connection management.
+A Python application demonstrating SQLite database operations with the ClassicModels database schema. Features a clean Data Access Layer (DAL) architecture with simplified connection management.
+
+## Features
+
+- ✅ **Zero configuration** - No database server required
+- ✅ **File-based database** - Single SQLite file
+- ✅ **Built-in Python support** - Uses sqlite3 standard library
+- ✅ **Data Access Layer (DAL)** for clean separation of concerns
+- ✅ **Parameterized queries** for SQL injection prevention
+- ✅ **Environment configuration** using python-dotenv
+- ✅ **Database initialization** script with sample data
+- ✅ **Foreign key constraints** enforced
+- ✅ **Performance indexes** on common queries
 
 ## Project Structure
 
 ```
 sql-connector/
-├── config.py                  # Database configuration with environment variables
-├── main.py                    # Main application with examples
 ├── db/
 │   ├── __init__.py           # Database package exports
-│   ├── mysql_client.py       # MySqlClient class with retry logic
-│   └── mysql_config.py       # Database configuration
+│   └── connection.py         # SQLite connection management
 ├── dal/                       # Data Access Layer
 │   ├── __init__.py           # DAL package exports
-│   ├── customer_dal.py       # Customer operations
+│   ├── customer_dal.py       # Customer CRUD operations
 │   └── order_dal.py          # Order & OrderDetails operations
+├── main.py                    # Demo application
+├── init_db.py                 # Database initialization script
 ├── requirements.txt           # Python dependencies
-├── .env.example              # Environment variables template
-├── .gitignore                # Git ignore rules
-└── README.md                 # This file
+├── .env                       # Environment variables (gitignored)
+├── .gitignore                 # Git ignore rules
+└── README.md                  # This file
 ```
 
-## Features
+## Quick Start
 
-- ✅ **Class-based connection management** with `MySqlClient`
-- ✅ **Automatic retry logic** with exponential backoff
-- ✅ **Environment variable configuration** using python-dotenv
-- ✅ **Data Access Layer (DAL)** for clean separation of concerns
-- ✅ **Parameterized queries** for SQL injection prevention
-- ✅ **Context manager support** for automatic resource cleanup
-- ✅ **Comprehensive error handling** with specific MySQL error codes
-- ✅ **ClassicModels database** operations (Customers & Orders)
+### 1. Install Dependencies
 
-## Installation
+```powershell
+# Create virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/yosefanaliza/mysql_connector.git
-   cd mysql_connector
-   ```
+# Install dependencies
+pip install -r requirements.txt
+```
 
-2. **Create a virtual environment**:
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\activate
-   ```
+### 2. Initialize Database
 
-3. **Install dependencies**:
-   ```powershell
-   pip install -r requirements.txt
-   ```
+```powershell
+python init_db.py
+```
 
-## Configuration
+This creates the ClassicModels database with:
+- All necessary tables (customers, orders, orderdetails, products, etc.)
+- Foreign key constraints
+- Performance indexes
+- Optional sample data for testing
 
-1. **Create `.env` file** from the example:
-   ```powershell
-   copy .env.example .env
-   ```
+### 3. Configure Environment (Optional)
 
-2. **Update `.env`** with your MySQL credentials:
-   ```env
-   DB_USER=your_username
-   DB_PASSWORD=your_password
-   DB_HOST=127.0.0.1
-   DB_PORT=3306
-   DB_NAME=classicmodels
-   ```
+Create a `.env` file to customize the database location:
 
-## Usage
+```env
+DB_PATH=classicmodels.db
+```
 
-### Run the Application
+If not set, defaults to `classicmodels.db` in the project root.
+
+### 4. Run the Application
 
 ```powershell
 python main.py
 ```
 
-The application demonstrates:
-1. Querying customers by country
-2. Getting customer details and their orders
-3. Listing recent orders
-4. Retrieving order details with line items
+## Usage
 
-### Using the MySqlClient Class
+### Basic Connection
 
 ```python
-from db.mysql_client import MySqlClient
-from db.mysql_config import DB_CONFIG
+from db import get_connection
 
-# Initialize client
-client = MySqlClient(DB_CONFIG, attempts=3, delay=2)
+# Get a connection
+connection = get_connection()
 
-# Get connection
-connection = client.get_connection()
-
-# Use connection for database operations
-if client.is_connected():
-    # Your database operations here
-    pass
-
-# Close connection
-client.close()
+if connection:
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM customers LIMIT 5")
+        results = cursor.fetchall()
+        
+        for row in results:
+            print(row)
+        
+        cursor.close()
+    finally:
+        connection.close()
 ```
 
-### Using Context Manager
+### Using the Data Access Layer
 
 ```python
-from db.mysql_client import MySqlClient
-from db.mysql_config import DB_CONFIG
+from db import get_connection
+from dal import (
+    get_customers_by_country,
+    get_all_orders,
+    get_order_details
+)
 
-# Automatic connection and cleanup
-with MySqlClient(DB_CONFIG) as client:
-    conn = client.get_connection()
-    # Do database operations
-# Connection automatically closed
-```
+connection = get_connection()
 
-### Using the Singleton Instance
-
-```python
-from db.mysql_client import mysql_client
-
-# Get connection from singleton
-connection = mysql_client.get_connection()
-
-# Use connection
-if connection.is_connected():
-    # Your operations
-    pass
+if connection:
+    try:
+        # Get customers from USA
+        usa_customers = get_customers_by_country(connection, "USA")
+        for customer in usa_customers:
+            print(f"Customer: {customer[1]}, City: {customer[5]}")
+        
+        # Get recent orders
+        orders = get_all_orders(connection, limit=10)
+        for order in orders:
+            print(f"Order #{order[0]}, Status: {order[4]}")
+        
+        # Get order details
+        details = get_order_details(connection, 10100)
+        for detail in details:
+            print(f"Product: {detail[2]}, Qty: {detail[3]}")
+    
+    finally:
+        connection.close()
 ```
 
 ## Data Access Layer (DAL)
@@ -145,14 +146,29 @@ from dal import (
     delete_customer
 )
 
-# Get customers from USA
+# Query operations
+customers = get_all_customers(connection, limit=100)
+customer = get_customer_by_number(connection, 103)
 usa_customers = get_customers_by_country(connection, "USA")
 
-# Get specific customer
-customer = get_customer_by_number(connection, 103)
+# Insert new customer
+insert_customer(
+    connection,
+    customer_number=999,
+    customer_name="New Company",
+    contact_last_name="Doe",
+    contact_first_name="John",
+    phone="555-1234",
+    address_line1="123 Main St",
+    city="New York",
+    country="USA"
+)
 
 # Update customer
-update_customer(connection, 103, creditLimit=75000.00)
+update_customer(connection, 999, creditLimit=50000.00, phone="555-5678")
+
+# Delete customer
+delete_customer(connection, 999)
 ```
 
 ### Order Operations
@@ -168,65 +184,167 @@ from dal import (
     update_order_status
 )
 
-# Get all orders for a customer
-orders = get_orders_by_customer(connection, 103)
-
-# Get order details
+# Query operations
+orders = get_all_orders(connection, limit=50)
 order = get_order_by_number(connection, 10100)
+customer_orders = get_orders_by_customer(connection, 103)
+shipped_orders = get_orders_by_status(connection, "Shipped")
 details = get_order_details(connection, 10100)
 
+# Insert new order
+from datetime import date
+insert_order(
+    connection,
+    order_number=10500,
+    order_date=date(2023, 11, 1),
+    required_date=date(2023, 11, 10),
+    customer_number=103,
+    status="In Process"
+)
+
 # Update order status
-update_order_status(connection, 10100, "Shipped")
+update_order_status(connection, 10500, "Shipped", shipped_date=date(2023, 11, 5))
 ```
+
+## Database Schema
+
+### Main Tables
+
+| Table | Description |
+|-------|-------------|
+| **customers** | Customer information, contacts, and credit limits |
+| **orders** | Order headers with dates and status |
+| **orderdetails** | Line items for each order (products, quantities, prices) |
+| **products** | Product catalog with pricing |
+| **productlines** | Product categories |
+| **employees** | Sales representatives and staff |
+| **offices** | Company office locations |
+| **payments** | Customer payment records |
+
+### Key Features
+
+- **Foreign Key Constraints**: Referential integrity enforced
+- **Indexes**: Optimized for common queries (country, customer, status, dates)
+- **Proper Data Types**: INTEGER, REAL, TEXT, DATE
+- **Cascading**: Proper CASCADE rules on foreign keys
 
 ## Architecture
 
-### MySqlClient Class
+### Connection Management
 
-The `MySqlClient` class provides:
-- **Automatic retry logic**: Exponentially backs off on connection failures
-- **Connection state tracking**: `is_connected()` method
-- **Context manager support**: Use with `with` statement
-- **Singleton pattern**: Pre-initialized `mysql_client` instance available
+The `db/connection.py` module provides:
+- Simple `get_connection()` function
+- Automatic foreign key constraint enabling
+- Error handling with informative messages
+- Environment-based database path configuration
+
+```python
+def get_connection():
+    """Create and return a SQLite database connection."""
+    try:
+        connection = sqlite3.connect(DB_PATH)
+        connection.execute('PRAGMA foreign_keys = ON')
+        return connection
+    except sqlite3.Error as err:
+        print(f"Error connecting to database: {err}")
+        return None
+```
 
 ### Data Access Layer Pattern
 
-The DAL provides:
+Benefits:
 - **Separation of concerns**: Database logic isolated from business logic
 - **Reusable functions**: Common operations encapsulated
 - **Type safety**: Proper type hints for all parameters
 - **Error handling**: Consistent error messages and rollback logic
-- **Parameterized queries**: Protection against SQL injection
+- **Parameterized queries**: Protection against SQL injection using `?` placeholders
 
-## ClassicModels Database
+### SQLite Advantages
 
-This application uses the [ClassicModels](https://www.mysqltutorial.org/mysql-sample-database.aspx) sample database, which models a business that sells scale models of classic cars.
+- **No Server**: SQLite is serverless, no installation or setup required
+- **Zero Configuration**: Works out of the box with Python
+- **Single File**: Entire database in one `.db` file
+- **Portable**: Easy to backup, move, or version control
+- **Fast**: Excellent performance for read-heavy workloads
+- **Reliable**: ACID-compliant, battle-tested in production
 
-### Tables Used:
-- **customers**: Customer information and sales representatives
-- **orders**: Order header information (dates, status)
-- **orderdetails**: Order line items (products, quantities, prices)
+## Database Initialization
+
+The `init_db.py` script creates the complete ClassicModels schema:
+
+```powershell
+python init_db.py
+```
+
+**Features:**
+- Creates all tables with proper constraints
+- Sets up foreign key relationships
+- Creates performance indexes
+- Optionally inserts sample data
+- Checks for existing database and prompts before overwriting
 
 ## Security Best Practices
 
-- ✅ **Environment variables**: Credentials stored in `.env` (gitignored)
-- ✅ **Parameterized queries**: All SQL uses `%s` placeholders
-- ✅ **No hardcoded secrets**: Configuration separated from code
-- ✅ **Connection validation**: Proper connection state checking
+- ✅ **Environment variables**: Database path configurable via `.env`
+- ✅ **Parameterized queries**: All SQL uses `?` placeholders
+- ✅ **No hardcoded paths**: Configuration separated from code
+- ✅ **Foreign key enforcement**: Data integrity maintained
 - ✅ **Error handling**: No sensitive data in error messages
-
-## Dependencies
-
-```
-mysql-connector-python>=8.0.0
-python-dotenv>=1.0.0
-```
+- ✅ **Transaction support**: Proper commit/rollback on errors
 
 ## Requirements
 
 - Python 3.7+
-- MySQL Server 5.7+ or 8.0+
-- ClassicModels database installed
+- python-dotenv (for environment variables)
+
+**That's it!** SQLite is included with Python, no database server needed.
+
+## Dependencies
+
+```
+python-dotenv==1.2.1
+```
+
+SQLite3 is part of the Python standard library.
+
+## Performance Tips
+
+1. **Use Indexes**: Already created for common queries
+2. **Batch Inserts**: Use `executemany()` for multiple inserts
+3. **Transactions**: Wrap multiple operations in transactions
+4. **Connection Reuse**: Reuse connections instead of creating new ones
+5. **PRAGMA Optimization**: Consider `PRAGMA journal_mode=WAL` for concurrent reads
+
+## Limitations
+
+SQLite is excellent for:
+- ✅ Development and testing
+- ✅ Small to medium datasets (< 100GB)
+- ✅ Read-heavy workloads
+- ✅ Single-user or low-concurrency applications
+- ✅ Embedded applications
+
+Consider MySQL/PostgreSQL for:
+- ❌ High concurrency (many simultaneous writes)
+- ❌ Very large datasets (> 100GB)
+- ❌ Distributed systems
+- ❌ Multiple concurrent writers
+
+## Troubleshooting
+
+**Database not found:**
+```powershell
+python init_db.py
+```
+
+**Foreign key constraint errors:**
+Ensure referenced records exist before inserting dependent records.
+
+**Empty query results:**
+Initialize with sample data using `init_db.py` and select "y" when prompted.
+
+**Permission errors:**
+Check write permissions in the directory where the database is created.
 
 ## License
 
@@ -236,6 +354,6 @@ This is a demonstration project for educational purposes.
 
 Feel free to submit issues or pull requests to improve this project.
 
-## Contact
+## Repository
 
-Repository: [https://github.com/yosefanaliza/mysql_connector](https://github.com/yosefanaliza/mysql_connector)
+GitHub: [https://github.com/yosefanaliza/sqlite_connector](https://github.com/yosefanaliza/sqlite_connector)

@@ -1,13 +1,8 @@
 """SQLite database connection module."""
 
 import sqlite3
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
-
-# Get database path from environment or use default
-DB_PATH = os.getenv('DB_PATH', 'classicmodels.db')
+DB_PATH = 'classicmodels.db'
 
 
 def get_connection():
